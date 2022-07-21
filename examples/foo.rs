@@ -23,13 +23,6 @@ struct FooController;
 
 #[async_trait::async_trait]
 impl Controller<Foo> for FooController {
-  // async fn admit_manifest(
-  //   &self,
-  //   manifest: ObjectManifest<Foo>,
-  // ) -> Result<ObjectManifest<Foo>> {
-  //   Ok(manifest)
-  // }
-
   async fn initialize_state(
     &self,
     manifest: &ObjectManifest<Foo>,
@@ -60,33 +53,21 @@ async fn main() -> Result<()> {
   let _ = tokio::try_join!(
     tokio::spawn(async move { operator.start().await }),
     tokio::task::spawn(async move {
-      let manifest = ObjectManifest::<Foo> {
+      let mut manifest = ObjectManifest::<Foo> {
         meta: ObjectMeta {
           name: "proxy".into(),
         },
         props: FooProps { foo: true },
       };
 
-      store.insert(manifest)?;
+      store.insert(manifest.clone())?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
-      let manifest = ObjectManifest::<Foo> {
-        meta: ObjectMeta {
-          name: "proxy".into(),
-        },
-        props: FooProps { foo: false },
-      };
-
-      store.insert(manifest)?;
+      manifest.props.foo = false;
+      store.insert(manifest.clone())?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
-      let manifest = ObjectManifest::<Foo> {
-        meta: ObjectMeta {
-          name: "proxy".into(),
-        },
-        props: FooProps { foo: true },
-      };
-
+      manifest.props.foo = true;
       store.insert(manifest)?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
