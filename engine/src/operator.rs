@@ -79,7 +79,7 @@ where
   }
 
   pub async fn start(&mut self) -> Result<()> {
-    while let Ok(event) = self.store.events().recv().await {
+    while let Ok(event) = self.store.events().recv() {
       println!("received store event: {:?}", event.change);
       self.handle_event(event).await?;
     }

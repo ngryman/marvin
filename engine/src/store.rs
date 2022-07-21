@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
+use flume::{Receiver, Sender};
 use gusto_core::{ObjectDefinition, ObjectManifest};
 use parking_lot::RwLock;
-use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 /// StoreEvent
 pub struct StoreEvent<O>
@@ -49,13 +49,14 @@ where
 {
   manifests: Arc<RwLock<BTreeMap<String, ObjectManifest<O>>>>,
   event_tx: Sender<StoreEvent<O>>,
+  event_rx: Receiver<StoreEvent<O>>,
 }
 
 impl<O> Store<O>
 where
   O: ObjectDefinition,
 {
-  pub fn insert(&mut self, manifest: ObjectManifest<O>) -> Result<()> {
+  pub fn insert(&self, manifest: ObjectManifest<O>) -> Result<()> {
     let prev = self
       .manifests
       .write()
@@ -97,7 +98,7 @@ where
   }
 
   pub fn events(&self) -> Receiver<StoreEvent<O>> {
-    self.event_tx.subscribe()
+    self.event_rx.clone()
   }
 }
 
@@ -106,10 +107,11 @@ where
   O: ObjectDefinition,
 {
   fn default() -> Self {
-    let (event_tx, _) = channel::<StoreEvent<O>>(1);
+    let (event_tx, event_rx) = flume::unbounded::<StoreEvent<O>>();
     Self {
       manifests: Default::default(),
       event_tx,
+      event_rx,
     }
   }
 }
@@ -122,6 +124,7 @@ where
     Self {
       manifests: self.manifests.clone(),
       event_tx: self.event_tx.clone(),
+      event_rx: self.event_rx.clone(),
     }
   }
 }
