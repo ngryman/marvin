@@ -1,0 +1,11 @@
+[package]
+name = "gusto-core"
+version = "0.1.0"
+description = "Gusto Core"
+authors = ["Nicolas Gryman"]
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.57"
+async-trait = "0.1.56"
