@@ -11,6 +11,13 @@ pub trait Controller<O>: Safe
 where
   O: ObjectDefinition,
 {
+  async fn admit_manifest(
+    &self,
+    manifest: ObjectManifest<O>,
+  ) -> Result<ObjectManifest<O>> {
+    Ok(manifest)
+  }
+
   async fn initialize_state(
     &self,
     manifest: &ObjectManifest<O>,
@@ -18,13 +25,6 @@ where
 
   async fn terminate(&self, manifest: &ObjectManifest<O>) -> Result<()> {
     Ok(())
-  }
-
-  async fn admit_manifest(
-    &self,
-    manifest: ObjectManifest<O>,
-  ) -> Result<ObjectManifest<O>> {
-    Ok(manifest)
   }
 
   async fn should_reconcile(
