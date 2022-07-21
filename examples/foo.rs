@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use gusto_core::{Controller, ObjectDefinition, ObjectManifest, ObjectMeta};
+use gusto_core::{
+  Command, Controller, ObjectDefinition, ObjectManifest, ObjectMeta
+};
 use gusto_engine::{Operator, Store};
 
 #[derive(Clone, Debug)]
@@ -36,6 +38,7 @@ impl Controller<Foo> for FooController {
     &self,
     manifest: &ObjectManifest<Foo>,
     state: &mut FooProps,
+    _command: &Command,
   ) -> Result<Option<Duration>> {
     state.foo = manifest.props.foo;
     dbg!(&state);

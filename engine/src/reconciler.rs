@@ -1,6 +1,6 @@
 use std::{collections::HashSet, marker::PhantomData, sync::Arc};
 
-use gusto_core::{Controller, ObjectDefinition};
+use gusto_core::{Command, Controller, ObjectDefinition};
 use parking_lot::RwLock;
 
 use crate::Object;
@@ -33,8 +33,11 @@ where
     tokio::spawn(async move {
       let manifest = &object.manifest;
       let state = &mut object.state.write().await;
+      // TODO: get the actual sender from the engine
+      let (sender, _) = flume::unbounded();
+      let command = Command::new(sender);
 
-      if let Err(e) = controller.reconcile(manifest, state).await {
+      if let Err(e) = controller.reconcile(manifest, state, &command).await {
         controller.reconcile_error(e).await;
       }
 

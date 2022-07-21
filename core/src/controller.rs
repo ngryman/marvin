@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Error, Result};
 
-use crate::{util::Safe, ObjectDefinition, ObjectManifest};
+use crate::{util::Safe, Command, ObjectDefinition, ObjectManifest};
 
 /// Controller
 #[allow(unused_variables)]
@@ -38,6 +38,7 @@ where
     &self,
     manifest: &ObjectManifest<O>,
     state: &mut O::State,
+    command: &Command,
   ) -> Result<Option<Duration>> {
     Ok(None)
   }

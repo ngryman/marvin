@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::util::Safe;
 
 /// ObjectDefinition
@@ -39,5 +41,19 @@ where
       meta: self.meta.clone(),
       props: self.props.clone(),
     }
+  }
+}
+
+/// AnyObjectManifest
+pub trait AnyObjectManifest: Any + Safe {}
+
+impl<O> AnyObjectManifest for ObjectManifest<O> where O: ObjectDefinition {}
+
+impl dyn AnyObjectManifest {
+  pub fn as_manifest<O>(&self) -> Option<&ObjectManifest<O>>
+  where
+    O: ObjectDefinition,
+  {
+    (self as &dyn Any).downcast_ref::<ObjectManifest<O>>()
   }
 }
