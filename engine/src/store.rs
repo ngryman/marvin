@@ -1,8 +1,10 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{any::Any, collections::BTreeMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use flume::{Receiver, Sender};
-use gusto_core::{ObjectDefinition, ObjectManifest};
+use gusto_core::{
+  util::Safe, DynObjectManifest, ObjectDefinition, ObjectManifest
+};
 use parking_lot::RwLock;
 
 /// StoreEvent
@@ -47,7 +49,7 @@ pub struct Store<O>
 where
   O: ObjectDefinition,
 {
-  manifests: Arc<RwLock<BTreeMap<String, ObjectManifest<O>>>>,
+  manifests: RwLock<BTreeMap<String, ObjectManifest<O>>>,
   event_tx: Sender<StoreEvent<O>>,
   event_rx: Receiver<StoreEvent<O>>,
 }
@@ -86,7 +88,7 @@ where
       .insert(manifest.meta.name.clone(), manifest);
   }
 
-  pub fn remove(&mut self, name: &str) -> Result<()> {
+  pub fn remove(&self, name: &str) -> Result<()> {
     if let Some(removed) = self.manifests.write().remove(name) {
       self
         .event_tx
@@ -116,15 +118,35 @@ where
   }
 }
 
-impl<O> Clone for Store<O>
+/// AnyStore
+pub trait AnyStore: Any + Safe {
+  fn insert(&self, manifest: Box<DynObjectManifest>) -> Result<()>;
+  fn remove(&self, name: &str) -> Result<()>;
+}
+
+impl<O> AnyStore for Store<O>
 where
   O: ObjectDefinition,
 {
-  fn clone(&self) -> Self {
-    Self {
-      manifests: self.manifests.clone(),
-      event_tx: self.event_tx.clone(),
-      event_rx: self.event_rx.clone(),
-    }
+  fn insert(&self, manifest: Box<DynObjectManifest>) -> Result<()> {
+    let manifest = Box::into_inner(manifest.as_manifest()?);
+    Store::<O>::insert(self, manifest)
+  }
+
+  fn remove(&self, name: &str) -> Result<()> {
+    Store::<O>::remove(self, name)
   }
 }
+
+impl dyn AnyStore + Send + Sync {
+  pub fn as_store<O>(self: Arc<Self>) -> Result<Arc<Store<O>>>
+  where
+    O: ObjectDefinition,
+  {
+    Arc::downcast(self)
+      .map_err(|_| anyhow!("cannot downcast to {}", std::any::type_name::<O>()))
+  }
+}
+
+/// DynStore
+pub type DynStore = dyn AnyStore + Send + Sync;

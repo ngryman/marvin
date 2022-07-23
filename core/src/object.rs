@@ -1,11 +1,17 @@
 use std::any::Any;
 
+use anyhow::{anyhow, Result};
+
 use crate::util::Safe;
 
 /// ObjectDefinition
 pub trait ObjectDefinition: Safe {
   type Props: Props = ();
   type State: State = ();
+
+  fn kind() -> &'static str {
+    std::any::type_name::<Self>()
+  }
 }
 impl ObjectDefinition for () {}
 
@@ -49,11 +55,15 @@ pub trait AnyObjectManifest: Any + Safe {}
 
 impl<O> AnyObjectManifest for ObjectManifest<O> where O: ObjectDefinition {}
 
-impl dyn AnyObjectManifest {
-  pub fn as_manifest<O>(&self) -> Option<&ObjectManifest<O>>
+pub type DynObjectManifest = dyn AnyObjectManifest + Send + Sync + 'static;
+
+impl DynObjectManifest {
+  pub fn as_manifest<O>(self: Box<Self>) -> Result<Box<ObjectManifest<O>>>
   where
     O: ObjectDefinition,
   {
-    (self as &dyn Any).downcast_ref::<ObjectManifest<O>>()
+    (self as Box<dyn Any + Send + Sync>)
+      .downcast()
+      .map_err(|_| anyhow!("cannot downcast to {}", std::any::type_name::<O>()))
   }
 }

@@ -4,7 +4,7 @@ use anyhow::Result;
 use gusto_core::{
   Command, Controller, ObjectDefinition, ObjectManifest, ObjectMeta
 };
-use gusto_engine::{Operator, Store};
+use gusto_engine::Engine;
 
 #[derive(Clone, Debug)]
 #[allow(unused)]
@@ -38,7 +38,7 @@ impl Controller<Foo> for FooController {
     &self,
     manifest: &ObjectManifest<Foo>,
     state: &mut FooProps,
-    _command: &Command,
+    _command: &Command<Foo>,
   ) -> Result<Option<Duration>> {
     state.foo = manifest.props.foo;
     dbg!(&state);
@@ -50,12 +50,15 @@ impl Controller<Foo> for FooController {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-  let mut store = Store::default();
-  let mut operator = Operator::new(FooController, store.clone());
+  let mut engine = Engine::default();
+  engine.register_object::<Foo>();
+  engine.register_controller(FooController)?;
+
+  let command = engine.command::<Foo>();
 
   let _ = tokio::try_join!(
-    tokio::spawn(async move { operator.start().await }),
-    tokio::task::spawn(async move {
+    tokio::spawn(async move { engine.start().await }),
+    tokio::spawn(async move {
       let mut manifest = ObjectManifest::<Foo> {
         meta: ObjectMeta {
           name: "proxy".into(),
@@ -63,18 +66,18 @@ async fn main() -> Result<()> {
         props: FooProps { foo: true },
       };
 
-      store.insert(manifest.clone())?;
+      command.insert_manifest(manifest.clone())?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
       manifest.props.foo = false;
-      store.insert(manifest.clone())?;
+      command.insert_manifest(manifest.clone())?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
       manifest.props.foo = true;
-      store.insert(manifest)?;
+      command.insert_manifest(manifest)?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
-      store.remove("proxy")
+      command.remove_manifest("proxy".into())
     })
   )?;
 

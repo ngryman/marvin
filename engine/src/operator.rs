@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{bail, Result};
-use gusto_core::{Controller, ObjectDefinition, ObjectManifest};
+use gusto_core::{Command, Controller, ObjectDefinition, ObjectManifest};
 
 use crate::{
   store::{Change, StoreEvent}, Object, Reconciler, Store
@@ -61,7 +61,7 @@ where
   controller: Arc<C>,
   reconciler: Reconciler<C, O>,
   objects: Objects<O>,
-  store: Store<O>,
+  store: Arc<Store<O>>,
 }
 
 impl<C, O> Operator<C, O>
@@ -69,21 +69,27 @@ where
   C: Controller<O>,
   O: ObjectDefinition,
 {
-  pub fn new(controller: C, store: Store<O>) -> Self {
+  pub fn new(controller: C, command: Command<O>, store: Arc<Store<O>>) -> Self {
+    let controller = Arc::new(controller);
+
     Self {
-      controller: Arc::new(controller),
-      reconciler: Default::default(),
+      controller: controller.clone(),
+      reconciler: Reconciler::new(command, controller),
       objects: Default::default(),
       store,
     }
   }
 
-  pub async fn start(&mut self) -> Result<()> {
-    while let Ok(event) = self.store.events().recv() {
+  pub async fn start(&mut self) {
+    let events_rx = self.store.events();
+
+    while let Ok(event) = events_rx.recv_async().await {
       println!("received store event: {:?}", event.change);
-      self.handle_event(event).await?;
+
+      if let Err(e) = self.handle_event(event).await {
+        eprintln!("{e}");
+      }
     }
-    Ok(())
   }
 
   async fn handle_event(&mut self, event: StoreEvent<O>) -> Result<()> {
@@ -103,10 +109,7 @@ where
         self.objects.insert(name.clone(), object.clone());
 
         if self.controller.should_reconcile(&manifest).await? {
-          println!("{}: reconcile", name);
-          self
-            .reconciler
-            .reconcile(name, object, self.controller.clone());
+          self.reconciler.reconcile(name, object);
         }
       }
       Change::Update => {
@@ -118,10 +121,7 @@ where
           self.store.patch(manifest.clone());
 
           if self.controller.should_reconcile(&manifest).await? {
-            println!("{}: reconcile", name);
-            self
-              .reconciler
-              .reconcile(name, object, self.controller.clone());
+            self.reconciler.reconcile(name, object);
           }
         } else {
           bail!("no object found for name '{}'", name)
