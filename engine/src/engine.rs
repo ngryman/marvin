@@ -13,7 +13,7 @@ type StartOperatorFn = Box<dyn FnOnce() -> JoinHandle<()> + Send>;
 
 /// Engine
 pub struct Engine {
-  stores: BTreeMap<String, Arc<DynStore>>,
+  stores: BTreeMap<&'static str, Arc<DynStore>>,
   start_queue: VecDeque<StartOperatorFn>,
   command_tx: Sender<CommandEvent>,
   command_rx: Receiver<CommandEvent>,
@@ -27,7 +27,7 @@ impl Engine {
     // let store = Arc::new(Store::<O>::default());
     self
       .stores
-      .entry(O::kind().to_owned())
+      .entry(O::kind())
       .or_insert_with(|| Arc::new(Store::<O>::default()));
   }
 
@@ -72,8 +72,8 @@ impl Engine {
 
   async fn handle_event(&mut self, event: CommandEvent) -> Result<()> {
     match event {
-      CommandEvent::InsertManifest(kind, manifest) => {
-        self.get_store_kind(kind)?.insert(manifest)?;
+      CommandEvent::InsertManifest(kind, manifest, owner) => {
+        self.get_store_kind(kind)?.insert(manifest, owner)?;
       }
       CommandEvent::RemoveManifest(kind, name) => {
         self.get_store_kind(kind)?.remove(&name)?;
