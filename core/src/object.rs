@@ -41,6 +41,15 @@ where
   pub props: O::Props,
 }
 
+impl<O> ObjectManifest<O>
+where
+  O: ObjectDefinition,
+{
+  pub fn name(&self) -> &str {
+    &self.meta.name
+  }
+}
+
 impl<O> Clone for ObjectManifest<O>
 where
   O: ObjectDefinition,

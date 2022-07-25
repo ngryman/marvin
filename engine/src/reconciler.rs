@@ -47,7 +47,7 @@ where
         controller.reconcile_error(e).await;
       }
 
-      pending.write().remove(&manifest.meta.name);
+      pending.write().remove(manifest.name());
     });
 
     self.pending.write().insert(name);

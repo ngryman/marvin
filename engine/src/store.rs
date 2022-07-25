@@ -62,7 +62,7 @@ where
     let prev = self
       .manifests
       .write()
-      .insert(manifest.meta.name.clone(), manifest.clone());
+      .insert(manifest.name().to_owned(), manifest.clone());
 
     match prev {
       Some(_) => {
@@ -82,7 +82,7 @@ where
   }
 
   pub fn patch(&self, manifest: ObjectManifest<O>) -> Result<()> {
-    let name = &manifest.meta.name;
+    let name = manifest.name();
 
     if let Some(existing) = self.manifests.write().get_mut(name) {
       *existing = manifest;

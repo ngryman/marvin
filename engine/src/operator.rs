@@ -41,11 +41,11 @@ where
     &mut self,
     manifest: ObjectManifest<O>,
   ) -> Option<Object<O>> {
-    if let Some(object) = self.inner.get_mut(&manifest.meta.name) {
+    if let Some(object) = self.inner.get_mut(manifest.name()) {
       object.manifest = manifest;
       self
         .id_index
-        .insert(object.id, object.manifest.meta.name.clone());
+        .insert(object.id, object.manifest.name().to_owned());
 
       Some(object.clone())
     } else {
@@ -112,8 +112,7 @@ where
 
   async fn handle_event(&mut self, event: StoreEvent<O>) -> Result<()> {
     let StoreEvent { change, manifest } = event;
-
-    let name = manifest.meta.name.clone();
+    let name = manifest.name().to_owned();
 
     match change {
       Change::Create => {
@@ -125,7 +124,7 @@ where
         let state = self.controller.initialize_state(&manifest).await?;
 
         let object = Object::new(manifest.clone(), state);
-        self.objects.insert(name.clone(), object.clone());
+        self.objects.insert(name.to_owned(), object.clone());
 
         if self.controller.should_reconcile(&manifest).await? {
           self.reconciler.reconcile(name, object);
