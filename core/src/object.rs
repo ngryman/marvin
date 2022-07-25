@@ -23,10 +23,13 @@ impl<T> Props for T where T: Clone + Safe {}
 pub trait State: Safe {}
 impl<T> State for T where T: Safe {}
 
+/// ObjectName
+pub type ObjectName = String;
+
 /// ObjectMeta
 #[derive(Clone)]
 pub struct ObjectMeta {
-  pub name: String,
+  pub name: ObjectName,
 }
 
 /// ObjectManifest

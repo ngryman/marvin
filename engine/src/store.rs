@@ -1,6 +1,6 @@
 use std::{any::Any, collections::BTreeMap, sync::Arc};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use flume::{Receiver, Sender};
 use gusto_core::{
   util::Safe, DynObjectManifest, ObjectDefinition, ObjectManifest
@@ -81,11 +81,16 @@ where
     Ok(())
   }
 
-  pub fn patch(&self, manifest: ObjectManifest<O>) {
-    self
-      .manifests
-      .write()
-      .insert(manifest.meta.name.clone(), manifest);
+  pub fn patch(&self, manifest: ObjectManifest<O>) -> Result<()> {
+    let name = &manifest.meta.name;
+
+    if let Some(existing) = self.manifests.write().get_mut(name) {
+      *existing = manifest;
+    } else {
+      bail!("cannot patch, not manifest found with name {name}")
+    }
+
+    Ok(())
   }
 
   pub fn remove(&self, name: &str) -> Result<()> {

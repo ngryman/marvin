@@ -1,10 +1,14 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+  collections::{btree_map::Entry, BTreeMap}, sync::Arc
+};
 
 use anyhow::{bail, Result};
-use gusto_core::{Command, Controller, ObjectDefinition, ObjectManifest};
+use gusto_core::{
+  Command, Controller, ObjectDefinition, ObjectManifest, ObjectName
+};
 
 use crate::{
-  store::{Change, StoreEvent}, Object, Reconciler, Store
+  store::{Change, StoreEvent}, Object, ObjectId, Reconciler, Store
 };
 
 /// Objects
@@ -12,7 +16,8 @@ struct Objects<O>
 where
   O: ObjectDefinition,
 {
-  inner: BTreeMap<String, Object<O>>,
+  inner: BTreeMap<ObjectName, Object<O>>,
+  id_index: BTreeMap<ObjectId, ObjectName>,
 }
 
 impl<O> Objects<O>
@@ -20,16 +25,28 @@ where
   O: ObjectDefinition,
 {
   pub fn insert(&mut self, name: String, object: Object<O>) {
-    self.inner.insert(name, object);
+    match self.inner.entry(name.clone()) {
+      Entry::Vacant(entry) => {
+        let id = object.id;
+        entry.insert(object);
+        self.id_index.insert(id, name);
+      }
+      Entry::Occupied(mut entry) => {
+        entry.insert(object);
+      }
+    }
   }
 
   pub fn patch_manifest(
     &mut self,
-    name: &str,
     manifest: ObjectManifest<O>,
   ) -> Option<Object<O>> {
-    if let Some(object) = self.inner.get_mut(name) {
+    if let Some(object) = self.inner.get_mut(&manifest.meta.name) {
       object.manifest = manifest;
+      self
+        .id_index
+        .insert(object.id, object.manifest.meta.name.clone());
+
       Some(object.clone())
     } else {
       None
@@ -48,6 +65,7 @@ where
   fn default() -> Self {
     Self {
       inner: Default::default(),
+      id_index: Default::default(),
     }
   }
 }
@@ -94,13 +112,14 @@ where
 
   async fn handle_event(&mut self, event: StoreEvent<O>) -> Result<()> {
     let StoreEvent { change, manifest } = event;
+
     let name = manifest.meta.name.clone();
 
     match change {
       Change::Create => {
         println!("{}: admit manifest", name);
         let manifest = self.controller.admit_manifest(manifest).await?;
-        self.store.patch(manifest.clone());
+        self.store.patch(manifest.clone())?;
 
         println!("{}: initialize state", name);
         let state = self.controller.initialize_state(&manifest).await?;
@@ -113,12 +132,10 @@ where
         }
       }
       Change::Update => {
-        if let Some(object) =
-          self.objects.patch_manifest(&name, manifest.clone())
-        {
+        if let Some(object) = self.objects.patch_manifest(manifest.clone()) {
           println!("{}: admit manifest", name);
           let manifest = self.controller.admit_manifest(manifest).await?;
-          self.store.patch(manifest.clone());
+          self.store.patch(manifest.clone())?;
 
           if self.controller.should_reconcile(&manifest).await? {
             self.reconciler.reconcile(name, object);
