@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, fmt::Display, ops::Deref};
 
 use anyhow::{anyhow, Result};
 
@@ -24,7 +24,32 @@ pub trait State: Safe {}
 impl<T> State for T where T: Safe {}
 
 /// ObjectName
-pub type ObjectName = String;
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ObjectName(String);
+
+impl ObjectName {
+  pub const ROOT: &'static str = "<root>";
+}
+
+impl Display for ObjectName {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    self.0.fmt(f)
+  }
+}
+
+impl Deref for ObjectName {
+  type Target = str;
+
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl From<&str> for ObjectName {
+  fn from(s: &str) -> Self {
+    Self(s.to_owned())
+  }
+}
 
 /// ObjectMeta
 #[derive(Clone)]
@@ -45,7 +70,7 @@ impl<O> ObjectManifest<O>
 where
   O: ObjectDefinition,
 {
-  pub fn name(&self) -> &str {
+  pub fn name(&self) -> &ObjectName {
     &self.meta.name
   }
 }

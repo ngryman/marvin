@@ -53,7 +53,7 @@ where
     }
   }
 
-  pub fn remove(&mut self, name: &str) -> Option<Object<O>> {
+  pub fn remove(&mut self, name: &ObjectName) -> Option<Object<O>> {
     self.inner.remove(name)
   }
 }

@@ -3,7 +3,7 @@ use std::{any::Any, collections::BTreeMap, sync::Arc};
 use anyhow::{anyhow, bail, Result};
 use flume::{Receiver, Sender};
 use gusto_core::{
-  util::Safe, DynObjectManifest, ObjectDefinition, ObjectManifest
+  util::Safe, DynObjectManifest, ObjectDefinition, ObjectManifest, ObjectName
 };
 use parking_lot::RwLock;
 
@@ -49,7 +49,7 @@ pub struct Store<O>
 where
   O: ObjectDefinition,
 {
-  manifests: RwLock<BTreeMap<String, ObjectManifest<O>>>,
+  manifests: RwLock<BTreeMap<ObjectName, ObjectManifest<O>>>,
   event_tx: Sender<StoreEvent<O>>,
   event_rx: Receiver<StoreEvent<O>>,
 }
@@ -93,7 +93,7 @@ where
     Ok(())
   }
 
-  pub fn remove(&self, name: &str) -> Result<()> {
+  pub fn remove(&self, name: &ObjectName) -> Result<()> {
     if let Some(removed) = self.manifests.write().remove(name) {
       self
         .event_tx
@@ -125,8 +125,7 @@ where
 
 /// AnyStore
 pub trait AnyStore: Any + Safe {
-  fn insert(&self, manifest: Box<DynObjectManifest>) -> Result<()>;
-  fn remove(&self, name: &str) -> Result<()>;
+  fn remove(&self, name: &ObjectName) -> Result<()>;
 }
 
 impl<O> AnyStore for Store<O>
@@ -138,7 +137,7 @@ where
     Store::<O>::insert(self, manifest)
   }
 
-  fn remove(&self, name: &str) -> Result<()> {
+  fn remove(&self, name: &ObjectName) -> Result<()> {
     Store::<O>::remove(self, name)
   }
 }

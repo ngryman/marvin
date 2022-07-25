@@ -3,12 +3,12 @@ use std::{fmt::Debug, marker::PhantomData};
 use anyhow::Result;
 use flume::Sender;
 
-use crate::{DynObjectManifest, ObjectDefinition, ObjectManifest};
+use crate::{DynObjectManifest, ObjectDefinition, ObjectManifest, ObjectName};
 
 /// CommandEvent
 pub enum CommandEvent {
   InsertManifest(&'static str, Box<DynObjectManifest>),
-  RemoveManifest(&'static str, String),
+  RemoveManifest(&'static str, ObjectName),
 }
 
 impl Debug for CommandEvent {
@@ -49,7 +49,7 @@ where
     Ok(())
   }
 
-  pub fn remove_manifest(&self, name: String) -> Result<()> {
+  pub fn remove_manifest(&self, name: ObjectName) -> Result<()> {
     self
       .sender
       .send(CommandEvent::RemoveManifest(O::kind(), name))?;

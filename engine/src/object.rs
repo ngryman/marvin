@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gusto_core::{ObjectDefinition, ObjectManifest};
+use gusto_core::{ObjectDefinition, ObjectManifest, ObjectName};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -26,6 +26,10 @@ where
       manifest,
       state: Arc::new(RwLock::new(state)),
     }
+  }
+
+  pub fn name(&self) -> &ObjectName {
+    &self.manifest.meta.name
   }
 }
 
