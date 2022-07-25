@@ -24,12 +24,11 @@ impl<O> Objects<O>
 where
   O: ObjectDefinition,
 {
-  pub fn insert(&mut self, name: String, object: Object<O>) {
-    match self.inner.entry(name.clone()) {
+  pub fn insert(&mut self, object: Object<O>) {
+    match self.inner.entry(object.name().to_owned()) {
       Entry::Vacant(entry) => {
-        let id = object.id;
+        self.id_index.insert(object.id, object.name().to_owned());
         entry.insert(object);
-        self.id_index.insert(id, name);
       }
       Entry::Occupied(mut entry) => {
         entry.insert(object);
@@ -124,10 +123,10 @@ where
         let state = self.controller.initialize_state(&manifest).await?;
 
         let object = Object::new(manifest.clone(), state);
-        self.objects.insert(name.to_owned(), object.clone());
+        self.objects.insert(object.clone());
 
         if self.controller.should_reconcile(&manifest).await? {
-          self.reconciler.reconcile(name, object);
+          self.reconciler.reconcile(object);
         }
       }
       Change::Update => {
@@ -137,7 +136,7 @@ where
           self.store.patch(manifest.clone())?;
 
           if self.controller.should_reconcile(&manifest).await? {
-            self.reconciler.reconcile(name, object);
+            self.reconciler.reconcile(object);
           }
         } else {
           bail!("no object found for name '{}'", name)

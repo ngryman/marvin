@@ -3,7 +3,7 @@ use std::{collections::HashSet, sync::Arc};
 use gusto_core::{Command, Controller, ObjectDefinition};
 use parking_lot::RwLock;
 
-use crate::Object;
+use crate::{Object, ObjectId};
 
 /// Reconciler
 pub struct Reconciler<C, O>
@@ -11,7 +11,7 @@ where
   C: Controller<O>,
   O: ObjectDefinition,
 {
-  pending: Arc<RwLock<HashSet<String>>>,
+  pending: Arc<RwLock<HashSet<ObjectId>>>,
   command: Command<O>,
   controller: Arc<C>,
 }
@@ -29,8 +29,8 @@ where
     }
   }
 
-  pub fn reconcile(&mut self, name: String, object: Object<O>) {
-    if self.pending.read().contains(&name) {
+  pub fn reconcile(&mut self, object: Object<O>) {
+    if self.pending.read().contains(&object.id) {
       println!("skip reconciliation");
       return;
     }
@@ -47,9 +47,9 @@ where
         controller.reconcile_error(e).await;
       }
 
-      pending.write().remove(manifest.name());
+      pending.write().remove(&object.id);
     });
 
-    self.pending.write().insert(name);
+    self.pending.write().insert(object.id);
   }
 }
