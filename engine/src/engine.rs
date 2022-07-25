@@ -7,13 +7,14 @@ use flume::{Receiver, Sender};
 use gusto_core::{Command, CommandEvent, Controller, ObjectDefinition};
 use tokio::task::JoinHandle;
 
-use crate::{DynStore, Operator, Store};
+use crate::{DynStore, Operator, Owners, Store};
 
 type StartOperatorFn = Box<dyn FnOnce() -> JoinHandle<()> + Send>;
 
 /// Engine
 pub struct Engine {
   stores: BTreeMap<&'static str, Arc<DynStore>>,
+  owners: Owners,
   start_queue: VecDeque<StartOperatorFn>,
   command_tx: Sender<CommandEvent>,
   command_rx: Receiver<CommandEvent>,
@@ -73,9 +74,17 @@ impl Engine {
   async fn handle_event(&mut self, event: CommandEvent) -> Result<()> {
     match event {
       CommandEvent::InsertManifest(kind, manifest, owner) => {
-        self.get_store_kind(kind)?.insert(manifest, owner)?;
+        if let Some(owner) = owner {
+          self.owners.own(owner, kind, manifest.name().to_owned())?;
+        }
+        self.get_store_kind(kind)?.insert(manifest)?;
       }
       CommandEvent::RemoveManifest(kind, name) => {
+        if let Some(ownerships) = self.owners.remove_owner(&name) {
+          for owned in ownerships {
+            self.get_store_kind(owned.kind)?.remove(&owned.name)?;
+          }
+        }
         self.get_store_kind(kind)?.remove(&name)?;
       }
     }
@@ -110,6 +119,7 @@ impl Default for Engine {
 
     Self {
       stores: Default::default(),
+      owners: Default::default(),
       start_queue: Default::default(),
       command_tx,
       command_rx,

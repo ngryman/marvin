@@ -24,12 +24,8 @@ pub trait State: Safe {}
 impl<T> State for T where T: Safe {}
 
 /// ObjectName
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ObjectName(String);
-
-impl ObjectName {
-  pub const ROOT: &'static str = "<root>";
-}
 
 impl Display for ObjectName {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -42,6 +38,12 @@ impl Deref for ObjectName {
 
   fn deref(&self) -> &Self::Target {
     &self.0
+  }
+}
+
+impl From<String> for ObjectName {
+  fn from(s: String) -> Self {
+    Self(s)
   }
 }
 
@@ -88,9 +90,18 @@ where
 }
 
 /// AnyObjectManifest
-pub trait AnyObjectManifest: Any + Safe {}
+pub trait AnyObjectManifest: Any + Safe {
+  fn name(&self) -> &ObjectName;
+}
 
-impl<O> AnyObjectManifest for ObjectManifest<O> where O: ObjectDefinition {}
+impl<O> AnyObjectManifest for ObjectManifest<O>
+where
+  O: ObjectDefinition,
+{
+  fn name(&self) -> &ObjectName {
+    ObjectManifest::name(self)
+  }
+}
 
 pub type DynObjectManifest = dyn AnyObjectManifest + Send + Sync + 'static;
 

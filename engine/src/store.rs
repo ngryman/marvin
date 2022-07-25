@@ -125,6 +125,7 @@ where
 
 /// AnyStore
 pub trait AnyStore: Any + Safe {
+  fn insert(&self, manifest: Box<DynObjectManifest>) -> Result<()>;
   fn remove(&self, name: &ObjectName) -> Result<()>;
 }
 
