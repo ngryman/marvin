@@ -86,7 +86,7 @@ where
   C: Controller<O>,
   O: ObjectDefinition,
 {
-  pub fn new(controller: C, command: Command<O>, store: Arc<Store<O>>) -> Self {
+  pub fn new(controller: C, command: Command, store: Arc<Store<O>>) -> Self {
     let controller = Arc::new(controller);
 
     Self {

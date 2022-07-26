@@ -42,7 +42,7 @@ impl Engine {
     O: ObjectDefinition,
   {
     let store = self.get_store::<O>()?;
-    let command = self.command::<O>();
+    let command = self.command();
 
     let mut op = Operator::new(controller, command, store);
     let start_op = Box::new(|| tokio::spawn(async move { op.start().await }));
@@ -52,11 +52,8 @@ impl Engine {
     Ok(())
   }
 
-  pub fn command<O>(&self) -> Command<O>
-  where
-    O: ObjectDefinition,
-  {
-    Command::<O>::new(self.command_tx.clone())
+  pub fn command(&self) -> Command {
+    Command::new(self.command_tx.clone())
   }
 
   pub async fn start(mut self) {

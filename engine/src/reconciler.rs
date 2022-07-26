@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, marker::PhantomData, sync::Arc};
 
 use gusto_core::{Command, Controller, ObjectDefinition};
 use parking_lot::RwLock;
@@ -12,8 +12,9 @@ where
   O: ObjectDefinition,
 {
   pending: Arc<RwLock<HashSet<ObjectId>>>,
-  command: Command<O>,
+  command: Command,
   controller: Arc<C>,
+  o: PhantomData<O>,
 }
 
 impl<C, O> Reconciler<C, O>
@@ -21,11 +22,12 @@ where
   C: Controller<O>,
   O: ObjectDefinition,
 {
-  pub fn new(command: Command<O>, controller: Arc<C>) -> Self {
+  pub fn new(command: Command, controller: Arc<C>) -> Self {
     Self {
       pending: Default::default(),
       command,
       controller,
+      o: PhantomData,
     }
   }
 

@@ -38,7 +38,7 @@ impl Controller<Foo> for FooController {
     &self,
     manifest: &ObjectManifest<Foo>,
     state: &mut FooProps,
-    _command: &Command<Foo>,
+    _command: &Command,
   ) -> Result<Option<Duration>> {
     state.foo = manifest.props.foo;
     dbg!(&state);
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
   engine.register_object::<Foo>();
   engine.register_controller(FooController)?;
 
-  let command = engine.command::<Foo>();
+  let command = engine.command();
 
   let _ = tokio::try_join!(
     tokio::spawn(async move { engine.start().await }),
@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
       command.insert_manifest(manifest).await?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
-      command.remove_manifest("proxy".into()).await
+      command.remove_manifest::<Foo>("proxy".into()).await
     })
   )?;
 

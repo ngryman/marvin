@@ -38,7 +38,7 @@ where
     &self,
     manifest: &ObjectManifest<O>,
     state: &mut O::State,
-    command: &Command<O>,
+    command: &Command,
   ) -> Result<Option<Duration>> {
     Ok(None)
   }

@@ -50,7 +50,7 @@ impl Controller<Parent> for ParentController {
     &self,
     manifest: &ObjectManifest<Parent>,
     state: &mut ParentState,
-    command: &Command<Parent>,
+    command: &Command,
   ) -> Result<Option<Duration>> {
     for child_props in &manifest.props.children {
       if !state.children.contains(&child_props.name) {
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
   engine.register_controller(ParentController)?;
   engine.register_object::<Child>();
 
-  let command = engine.command::<Parent>();
+  let command = engine.command();
 
   let _ = tokio::try_join!(
     tokio::spawn(async move { engine.start().await }),
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
       command.insert_manifest(manifest).await?;
       tokio::time::sleep(Duration::from_secs(1)).await;
 
-      command.remove_manifest("parent".into()).await
+      command.remove_manifest::<Parent>("parent".into()).await
     })
   )?;
 

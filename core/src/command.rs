@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData};
+use std::fmt::Debug;
 
 use anyhow::{bail, Result};
 use flume::Sender;
@@ -31,29 +31,22 @@ impl Debug for CommandAction {
 }
 
 /// Command
-pub struct Command<O>
-where
-  O: ObjectDefinition,
-{
+pub struct Command {
   sender: Sender<CommandEvent>,
-  o: PhantomData<O>,
 }
 
-impl<O> Command<O>
-where
-  O: ObjectDefinition,
-{
+impl Command {
   pub fn new(sender: Sender<CommandEvent>) -> Self {
-    Self {
-      sender,
-      o: PhantomData,
-    }
+    Self { sender }
   }
 
-  pub async fn insert_manifest(
+  pub async fn insert_manifest<O>(
     &self,
     manifest: ObjectManifest<O>,
-  ) -> Result<()> {
+  ) -> Result<()>
+  where
+    O: ObjectDefinition,
+  {
     self
       .send_event(
         CommandAction::InsertManifest(O::kind(), Box::new(manifest), None),
@@ -62,10 +55,13 @@ where
       .await
   }
 
-  pub async fn insert_manifest_async(
+  pub async fn insert_manifest_async<O>(
     &self,
     manifest: ObjectManifest<O>,
-  ) -> Result<()> {
+  ) -> Result<()>
+  where
+    O: ObjectDefinition,
+  {
     self
       .send_event(
         CommandAction::InsertManifest(O::kind(), Box::new(manifest), None),
@@ -74,25 +70,31 @@ where
       .await
   }
 
-  pub async fn remove_manifest(&self, name: ObjectName) -> Result<()> {
+  pub async fn remove_manifest<O>(&self, name: ObjectName) -> Result<()>
+  where
+    O: ObjectDefinition,
+  {
     self
       .send_event(CommandAction::RemoveManifest(O::kind(), name), true)
       .await
   }
 
-  pub async fn remove_manifest_async(&self, name: ObjectName) -> Result<()> {
+  pub async fn remove_manifest_async<O>(&self, name: ObjectName) -> Result<()>
+  where
+    O: ObjectDefinition,
+  {
     self
       .send_event(CommandAction::RemoveManifest(O::kind(), name), false)
       .await
   }
 
-  pub async fn insert_owned_manifest<MO>(
+  pub async fn insert_owned_manifest<O>(
     &self,
     owner: ObjectName,
-    manifest: ObjectManifest<MO>,
+    manifest: ObjectManifest<O>,
   ) -> Result<()>
   where
-    MO: ObjectDefinition,
+    O: ObjectDefinition,
   {
     if &owner == manifest.name() {
       bail!("an object can't own itself");
@@ -101,7 +103,7 @@ where
     self
       .send_event(
         CommandAction::InsertManifest(
-          MO::kind(),
+          O::kind(),
           Box::new(manifest),
           Some(owner),
         ),
@@ -110,13 +112,13 @@ where
       .await
   }
 
-  pub async fn insert_owned_manifest_async<MO>(
+  pub async fn insert_owned_manifest_async<O>(
     &self,
     owner: ObjectName,
-    manifest: ObjectManifest<MO>,
+    manifest: ObjectManifest<O>,
   ) -> Result<()>
   where
-    MO: ObjectDefinition,
+    O: ObjectDefinition,
   {
     if &owner == manifest.name() {
       bail!("an object can't own itself");
@@ -125,7 +127,7 @@ where
     self
       .send_event(
         CommandAction::InsertManifest(
-          MO::kind(),
+          O::kind(),
           Box::new(manifest),
           Some(owner),
         ),
@@ -156,14 +158,10 @@ where
   }
 }
 
-impl<O> Clone for Command<O>
-where
-  O: ObjectDefinition,
-{
+impl Clone for Command {
   fn clone(&self) -> Self {
     Self {
       sender: self.sender.clone(),
-      o: self.o,
     }
   }
 }
