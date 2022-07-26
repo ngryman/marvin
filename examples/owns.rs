@@ -62,7 +62,8 @@ impl Controller<Parent> for ParentController {
         };
 
         command
-          .insert_owned_manifest(manifest.name().to_owned(), child_manifest)?;
+          .insert_owned_manifest(manifest.name().to_owned(), child_manifest)
+          .await?;
       }
     }
 
@@ -98,10 +99,10 @@ async fn main() -> Result<()> {
         },
       };
 
-      command.insert_manifest(manifest)?;
+      command.insert_manifest(manifest).await?;
       tokio::time::sleep(Duration::from_secs(1)).await;
 
-      command.remove_manifest("parent".into())
+      command.remove_manifest("parent".into()).await
     })
   )?;
 

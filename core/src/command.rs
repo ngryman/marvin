@@ -8,12 +8,18 @@ use crate::{
 };
 
 /// CommandEvent
-pub enum CommandEvent {
+pub struct CommandEvent {
+  pub action: CommandAction,
+  pub ack: Option<catty::Sender<()>>,
+}
+
+/// CommandAction
+pub enum CommandAction {
   InsertManifest(ObjectKind, Box<DynObjectManifest>, Option<ObjectName>),
   RemoveManifest(ObjectKind, ObjectName),
 }
 
-impl Debug for CommandEvent {
+impl Debug for CommandAction {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let variant = match self {
       Self::InsertManifest(_, _, _) => "InsertManifest",
@@ -44,23 +50,43 @@ where
     }
   }
 
-  pub fn insert_manifest(&self, manifest: ObjectManifest<O>) -> Result<()> {
-    self.sender.send(CommandEvent::InsertManifest(
-      O::kind(),
-      Box::new(manifest),
-      None,
-    ))?;
-    Ok(())
-  }
-
-  pub fn remove_manifest(&self, name: ObjectName) -> Result<()> {
+  pub async fn insert_manifest(
+    &self,
+    manifest: ObjectManifest<O>,
+  ) -> Result<()> {
     self
-      .sender
-      .send(CommandEvent::RemoveManifest(O::kind(), name))?;
-    Ok(())
+      .send_event(
+        CommandAction::InsertManifest(O::kind(), Box::new(manifest), None),
+        true,
+      )
+      .await
   }
 
-  pub fn insert_owned_manifest<MO>(
+  pub async fn insert_manifest_async(
+    &self,
+    manifest: ObjectManifest<O>,
+  ) -> Result<()> {
+    self
+      .send_event(
+        CommandAction::InsertManifest(O::kind(), Box::new(manifest), None),
+        false,
+      )
+      .await
+  }
+
+  pub async fn remove_manifest(&self, name: ObjectName) -> Result<()> {
+    self
+      .send_event(CommandAction::RemoveManifest(O::kind(), name), true)
+      .await
+  }
+
+  pub async fn remove_manifest_async(&self, name: ObjectName) -> Result<()> {
+    self
+      .send_event(CommandAction::RemoveManifest(O::kind(), name), false)
+      .await
+  }
+
+  pub async fn insert_owned_manifest<MO>(
     &self,
     owner: ObjectName,
     manifest: ObjectManifest<MO>,
@@ -72,11 +98,60 @@ where
       bail!("an object can't own itself");
     }
 
-    self.sender.send(CommandEvent::InsertManifest(
-      MO::kind(),
-      Box::new(manifest),
-      Some(owner),
-    ))?;
+    self
+      .send_event(
+        CommandAction::InsertManifest(
+          MO::kind(),
+          Box::new(manifest),
+          Some(owner),
+        ),
+        true,
+      )
+      .await
+  }
+
+  pub async fn insert_owned_manifest_async<MO>(
+    &self,
+    owner: ObjectName,
+    manifest: ObjectManifest<MO>,
+  ) -> Result<()>
+  where
+    MO: ObjectDefinition,
+  {
+    if &owner == manifest.name() {
+      bail!("an object can't own itself");
+    }
+
+    self
+      .send_event(
+        CommandAction::InsertManifest(
+          MO::kind(),
+          Box::new(manifest),
+          Some(owner),
+        ),
+        false,
+      )
+      .await
+  }
+
+  async fn send_event(&self, action: CommandAction, ack: bool) -> Result<()> {
+    if ack {
+      let (ack_tx, ack_rx) = catty::oneshot();
+      self
+        .sender
+        .send_async(CommandEvent {
+          action,
+          ack: Some(ack_tx),
+        })
+        .await?;
+      ack_rx.await?;
+    } else {
+      self
+        .sender
+        .send_async(CommandEvent { action, ack: None })
+        .await?;
+    }
+
     Ok(())
   }
 }

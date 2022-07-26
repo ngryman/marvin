@@ -9,4 +9,5 @@ license = "MIT"
 [dependencies]
 anyhow = "1.0.57"
 async-trait = "0.1.56"
+catty = "0.1.5"
 flume = "0.10.13"

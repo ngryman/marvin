@@ -5,7 +5,7 @@ use std::{
 use anyhow::{anyhow, Result};
 use flume::{Receiver, Sender};
 use gusto_core::{
-  Command, CommandEvent, Controller, ObjectDefinition, ObjectKind
+  Command, CommandAction, CommandEvent, Controller, ObjectDefinition, ObjectKind
 };
 use tokio::task::JoinHandle;
 
@@ -65,7 +65,7 @@ impl Engine {
     }
 
     while let Ok(event) = self.command_rx.recv_async().await {
-      println!("received command event: {:?}", event);
+      println!("received command event: {:?}", event.action);
 
       if let Err(e) = self.handle_event(event).await {
         eprintln!("{e}");
@@ -74,14 +74,14 @@ impl Engine {
   }
 
   async fn handle_event(&mut self, event: CommandEvent) -> Result<()> {
-    match event {
-      CommandEvent::InsertManifest(kind, manifest, owner) => {
+    match event.action {
+      CommandAction::InsertManifest(kind, manifest, owner) => {
         if let Some(owner) = owner {
           self.owners.own(owner, kind, manifest.name().to_owned())?;
         }
         self.get_store_kind(kind)?.insert(manifest)?;
       }
-      CommandEvent::RemoveManifest(kind, name) => {
+      CommandAction::RemoveManifest(kind, name) => {
         if let Some(ownerships) = self.owners.remove_owner(&name) {
           for owned in ownerships {
             self.get_store_kind(owned.kind)?.remove(&owned.name)?;
@@ -89,6 +89,10 @@ impl Engine {
         }
         self.get_store_kind(kind)?.remove(&name)?;
       }
+    }
+
+    if let Some(ack) = event.ack {
+      ack.send(()).ok();
     }
 
     Ok(())

@@ -66,18 +66,18 @@ async fn main() -> Result<()> {
         props: FooProps { foo: true },
       };
 
-      command.insert_manifest(manifest.clone())?;
+      command.insert_manifest(manifest.clone()).await?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
       manifest.props.foo = false;
-      command.insert_manifest(manifest.clone())?;
+      command.insert_manifest(manifest.clone()).await?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
       manifest.props.foo = true;
-      command.insert_manifest(manifest)?;
+      command.insert_manifest(manifest).await?;
       tokio::time::sleep(Duration::from_millis(500)).await;
 
-      command.remove_manifest("proxy".into())
+      command.remove_manifest("proxy".into()).await
     })
   )?;
 
