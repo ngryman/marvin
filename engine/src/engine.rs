@@ -4,7 +4,9 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use flume::{Receiver, Sender};
-use gusto_core::{Command, CommandEvent, Controller, ObjectDefinition};
+use gusto_core::{
+  Command, CommandEvent, Controller, ObjectDefinition, ObjectKind
+};
 use tokio::task::JoinHandle;
 
 use crate::{DynStore, Operator, Owners, Store};
@@ -13,7 +15,7 @@ type StartOperatorFn = Box<dyn FnOnce() -> JoinHandle<()> + Send>;
 
 /// Engine
 pub struct Engine {
-  stores: BTreeMap<&'static str, Arc<DynStore>>,
+  stores: BTreeMap<ObjectKind, Arc<DynStore>>,
   owners: Owners,
   start_queue: VecDeque<StartOperatorFn>,
   command_tx: Sender<CommandEvent>,
@@ -104,7 +106,7 @@ impl Engine {
       .and_then(|s| s.as_store())
   }
 
-  fn get_store_kind(&self, kind: &str) -> Result<Arc<DynStore>> {
+  fn get_store_kind(&self, kind: ObjectKind) -> Result<Arc<DynStore>> {
     self
       .stores
       .get(kind)

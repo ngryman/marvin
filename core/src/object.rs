@@ -4,12 +4,15 @@ use anyhow::{anyhow, Result};
 
 use crate::util::Safe;
 
+/// ObjectKind
+pub type ObjectKind = &'static str;
+
 /// ObjectDefinition
 pub trait ObjectDefinition: Safe {
   type Props: Props = ();
   type State: State = ();
 
-  fn kind() -> &'static str {
+  fn kind() -> ObjectKind {
     std::any::type_name::<Self>()
   }
 }

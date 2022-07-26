@@ -3,12 +3,14 @@ use std::{fmt::Debug, marker::PhantomData};
 use anyhow::{bail, Result};
 use flume::Sender;
 
-use crate::{DynObjectManifest, ObjectDefinition, ObjectManifest, ObjectName};
+use crate::{
+  DynObjectManifest, ObjectDefinition, ObjectKind, ObjectManifest, ObjectName
+};
 
 /// CommandEvent
 pub enum CommandEvent {
-  InsertManifest(&'static str, Box<DynObjectManifest>, Option<ObjectName>),
-  RemoveManifest(&'static str, ObjectName),
+  InsertManifest(ObjectKind, Box<DynObjectManifest>, Option<ObjectName>),
+  RemoveManifest(ObjectKind, ObjectName),
 }
 
 impl Debug for CommandEvent {

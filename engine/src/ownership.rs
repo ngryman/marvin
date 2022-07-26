@@ -1,12 +1,12 @@
 use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 
 use anyhow::{bail, Result};
-use gusto_core::ObjectName;
+use gusto_core::{ObjectKind, ObjectName};
 
 /// Owned
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Owned {
-  pub kind: &'static str,
+  pub kind: ObjectKind,
   pub name: ObjectName,
 }
 
@@ -20,7 +20,7 @@ impl Owners {
   pub fn own(
     &mut self,
     owner: ObjectName,
-    owned_kind: &'static str,
+    owned_kind: ObjectKind,
     owned_name: ObjectName,
   ) -> Result<()> {
     let owned = Owned {
